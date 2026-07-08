@@ -1301,6 +1301,7 @@ pre {
   .overview-grid,
   .video-feature,
   .video-feature.reverse,
+  .video-feature.reverse.analysis-case,
   .results-charts,
   .scaling-grid {
     grid-template-columns: 1fr;
@@ -1368,9 +1369,58 @@ pre {
 
   .results-chart-card {
     padding: 14px;
+    overflow: hidden;
   }
 
   .grouped-bars {
+    --plot-height: 180px;
+    --label-height: 54px;
     gap: 4px;
+    padding-right: 0;
+    padding-left: 30px;
+    min-width: 0;
+  }
+
+  .grouped-bars::before,
+  .grouped-bars::after {
+    right: 0;
+    left: 30px;
+  }
+
+  .grouped-bars .axis-labels {
+    width: 24px;
+    font-size: 9px;
+  }
+
+  .grouped-bars em {
+    font-size: 8px;
+    line-height: 1;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .results-chart-card:not(.is-expanded) .mini-chart {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .video-feature > .feature-copy {
+    aspect-ratio: auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .video-feature .feature-copy p,
+  .video-feature .compact-list dd {
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .analysis-case .video-shell {
+    aspect-ratio: 16 / 9;
+  }
+
+  .analysis-case .video-shell video {
+    height: 100%;
   }
 }
