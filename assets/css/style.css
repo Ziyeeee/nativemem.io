@@ -625,7 +625,10 @@ pre {
 .media-card video,
 .comparison-grid video,
 .figure-panel video {
+  aspect-ratio: 16 / 9;
   background: #000;
+  min-height: 150px;
+  object-fit: cover;
 }
 
 .media-card h4 span {
@@ -734,6 +737,9 @@ pre {
 }
 
 .method-video video {
+  aspect-ratio: 16 / 9;
+  min-height: 180px;
+  object-fit: contain;
   width: 100%;
 }
 

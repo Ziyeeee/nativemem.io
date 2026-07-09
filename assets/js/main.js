@@ -77,6 +77,126 @@ function setupCopyButtons() {
   });
 }
 
+function preloadVideoPoster(video, onComplete = () => {}) {
+  const url = video.dataset.poster;
+  if (!url || video.dataset.posterLoaded === "true") {
+    onComplete();
+    return;
+  }
+
+  if (video.dataset.posterLoading === "true") {
+    video.addEventListener("posterloaded", onComplete, { once: true });
+    return;
+  }
+
+  let attempts = 0;
+  let completed = false;
+  const finish = () => {
+    if (completed) return;
+    completed = true;
+    video.dataset.posterLoading = "false";
+    video.dataset.posterLoaded = "true";
+    video.poster = url;
+    video.dispatchEvent(new CustomEvent("posterloaded"));
+    onComplete();
+  };
+
+  const tryLoad = () => {
+    attempts += 1;
+    video.dataset.posterLoading = "true";
+    video.poster = url;
+
+    const image = new Image();
+    const timeout = window.setTimeout(() => {
+      if (attempts < 3) {
+        tryLoad();
+        return;
+      }
+      finish();
+    }, 3500);
+
+    image.decoding = "async";
+    image.fetchPriority = "low";
+    image.onload = () => {
+      window.clearTimeout(timeout);
+      finish();
+    };
+    image.onerror = () => {
+      window.clearTimeout(timeout);
+      if (attempts < 3) {
+        window.setTimeout(tryLoad, attempts * 900);
+        return;
+      }
+      finish();
+    };
+    image.src = url;
+  };
+
+  tryLoad();
+}
+
+function setupPosterPreloads() {
+  const posterTargets = $$("video[data-poster]");
+  if (posterTargets.length === 0) return;
+
+  let nextPoster = 0;
+  const loadNextPoster = () => {
+    const video = posterTargets[nextPoster];
+    nextPoster += 1;
+    if (!video) return;
+    preloadVideoPoster(video, loadNextPoster);
+  };
+
+  loadNextPoster();
+  loadNextPoster();
+}
+
+function setupLazyVideos() {
+  const videos = $$("video[data-src]");
+  if (videos.length === 0) return;
+
+  const loadVideo = (video) => {
+    if (video.dataset.loaded === "true") return;
+
+    const startVideoLoad = () => {
+      if (video.dataset.loaded === "true") return;
+      video.src = video.dataset.src;
+      video.dataset.loaded = "true";
+      video.load();
+
+      if (video.hasAttribute("autoplay")) {
+        video.play().catch(() => {});
+      }
+    };
+
+    preloadVideoPoster(video, startVideoLoad);
+  };
+
+  videos.forEach((video) => {
+    video.addEventListener("pointerenter", () => loadVideo(video), { once: true });
+    video.addEventListener("focus", () => loadVideo(video), { once: true });
+    video.addEventListener("touchstart", () => loadVideo(video), { once: true, passive: true });
+  });
+
+  if (!("IntersectionObserver" in window)) {
+    videos.forEach(loadVideo);
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      loadVideo(entry.target);
+      observer.unobserve(entry.target);
+    });
+  }, {
+    rootMargin: "500px 0px",
+    threshold: 0.01
+  });
+
+  videos.forEach((video) => observer.observe(video));
+}
+
 function setupMethodSync() {
   const section = $("#method");
   if (!section) return;
@@ -87,6 +207,7 @@ function setupMethodSync() {
   if (!video || !grid || steps.length === 0) return;
 
   let deploymentTimer = null;
+  let hasPlaybackStarted = false;
 
   const clearDeploymentTimer = () => {
     if (!deploymentTimer) return;
@@ -108,15 +229,19 @@ function setupMethodSync() {
   };
 
   const syncFromTime = () => {
-    if (video.ended) return;
+    if (!hasPlaybackStarted || video.ended) return;
     clearDeploymentTimer();
     setActiveStage(video.currentTime < 12 ? "stage1" : "stage2");
   };
 
-  video.addEventListener("play", syncFromTime);
+  video.addEventListener("play", () => {
+    hasPlaybackStarted = true;
+    syncFromTime();
+  });
   video.addEventListener("timeupdate", syncFromTime);
   video.addEventListener("seeked", syncFromTime);
   video.addEventListener("ended", () => {
+    if (!hasPlaybackStarted) return;
     clearDeploymentTimer();
     setActiveStage("deployment");
     deploymentTimer = window.setTimeout(resetStages, 5000);
@@ -172,6 +297,8 @@ window.addEventListener("DOMContentLoaded", () => {
   setupNav();
   setupTabs();
   setupCopyButtons();
+  setupPosterPreloads();
+  setupLazyVideos();
   setupMethodSync();
   setupResultChartTooltips();
   setupResultChartToggles();
